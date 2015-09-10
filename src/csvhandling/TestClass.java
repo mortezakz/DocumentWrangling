@@ -27,19 +27,18 @@ public class TestClass {
 
 			newFileLine = nextLine;
 
-			 //newFileLine[19] = nextLine[19].toUpperCase();
+			// newFileLine[19] = nextLine[19].toUpperCase();
 
-			//THIS IS WHER THE PROBLEM WAS. I WAS GETTING nextLine[2] instead of [3]. It appears that the award number actually shows up in different place in text. Not just the beginning.
+			// THIS IS WHER THE PROBLEM WAS. I WAS GETTING nextLine[2] instead
+			// of [3]. It appears that the award number actually shows up in
+			// different place in text. Not just the beginning.
 			String awardNumber = nextLine[3];
 
 			if (nextLine[19].indexOf(awardNumber) != -1) {
 				System.out.println(++count);
 				System.out.println(nextLine[19].indexOf(awardNumber));
-				
-							
-				newFileLine[19] = nextLine[19].substring(nextLine[19].indexOf(awardNumber)+awardNumber.length(),newFileLine[19].length());
-				
-				System.out.println(newFileLine[19]);
+
+				newFileLine[19] = nextLine[19].substring(nextLine[19].indexOf(awardNumber) + awardNumber.length() , newFileLine[19].length());
 
 			}
 
