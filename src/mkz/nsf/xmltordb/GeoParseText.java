@@ -2,12 +2,15 @@ package mkz.nsf.xmltordb;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -18,6 +21,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+
+
+
+
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.jsoup.Jsoup;
 import org.postgresql.util.PGobject;
 import org.w3c.dom.DOMException;
@@ -28,11 +39,22 @@ import org.w3c.dom.ls.DOMImplementationLS;
 import org.w3c.dom.ls.LSSerializer;
 import org.xml.sax.SAXException;
 
-public class NsfAwardReader {
-	
-	public static Logger log = Logger.getLogger(NsfAwardReader.class.getName());
+import edu.psu.ist.vaccine.corpusbuilding.DatabaseConnection;
+import edu.psu.ist.vaccine.geotxt.api.GeoTxtApi;
+import edu.psu.ist.vaccine.geotxt.utils.Config;
 
-	public static void ReadXmlFiles(String address) throws IOException {
+public class GeoParseText {
+
+	public static Logger log = Logger.getLogger(GeoParseText.class.getName());
+
+	public static void geoParseTitleAbstract() throws IOException, IllegalArgumentException, URISyntaxException, org.json.simple.parser.ParseException {
+		
+		Config config = new Config(true);
+		
+		JSONParser parser = new JSONParser();
+		
+		GeoTxtApi geoTxtApi = new GeoTxtApi(config.getGate_home(),
+				config.getStanford_ner());
 
 		try {
 			NsfDatabaseConnection.connect();
@@ -41,17 +63,74 @@ public class NsfAwardReader {
 			e1.printStackTrace();
 		}
 
-		Files.walk(Paths.get(address)).forEach(filePath -> {
-			if (Files.isRegularFile(filePath)) {
-				try {
-					ParseXmlFiles(filePath, NsfDatabaseConnection.c);
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-				e.printStackTrace();
-				System.exit(1);
+		String getQuery = "select (\"Id\", \"Title\", \"Abstract\") from \"nsf\" where \"Abstract\" != ''";
+
+		Statement stmt;
+		try {
+			stmt = NsfDatabaseConnection.c.createStatement();
+
+			ResultSet rs = stmt.executeQuery(getQuery);
+
+			// ALthough we are using rs.next(), but there should be only one
+			// result because we used LIMIT 1 in the query above
+
+			while (rs.next()) {
+				
+				
+				String id = rs.getString(1);
+				String title = rs.getString(2);			
+				String abstractText = rs.getString(3);
+				
+				
+				
+				
+				String response = "";
+
+				String geoCodedTitleString = geoTxtApi.geoCodeToGeoJson(title,
+						"stanfords", false, 0, true, true);
+
+				Object geoCodedObj = parser.parse(geoCodedTitleString);
+
+				JSONObject geoCodedJson = (JSONObject) geoCodedObj;
+
+				JSONArray features = (JSONArray) geoCodedJson.get("features");
+				
+				int titlePlaceCount = features.size();
+				
+				
+				String geoCodedAbstractString = geoTxtApi.geoCodeToGeoJson(abstractText,
+						"stanfords", false, 0, true, true);
+
+				Object geoCodedAbstractObj = parser.parse(geoCodedAbstractString);
+
+				JSONObject geoCodedAbstractJson = (JSONObject) geoCodedAbstractObj;
+
+				JSONArray abstractFeatures = (JSONArray) geoCodedAbstractJson.get("features");
+				
+				int abstractPlaceCount = abstractFeatures.size();
+				
+				//TODO: get the other stanford NER model and only get plcae names.
+
+//				JSONObject feature = (JSONObject) features.get(0);
+//
+//				JSONObject properties = (JSONObject) feature.get("properties");
+//
+//				Long geoNameId = (Long) properties.get("geoNameId");
+//
+//				String fCode = (String) properties.get("featureCode");
+
+
+				
+				System.out.println(abstractPlaceCount);
+				
+				
+
 			}
+
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
-	}	);
 
 		try {
 			NsfDatabaseConnection.close();
@@ -86,8 +165,8 @@ public class NsfAwardReader {
 
 		doc.getDocumentElement().normalize();
 
-//		System.out.println("Root element :"
-//				+ doc.getDocumentElement().getNodeName());
+		// System.out.println("Root element :"
+		// + doc.getDocumentElement().getNodeName());
 
 		Element awardElement = (Element) doc.getDocumentElement()
 				.getElementsByTagName("Award").item(0);
@@ -99,9 +178,8 @@ public class NsfAwardReader {
 		String abstractNarration = awardElement
 				.getElementsByTagName("AbstractNarration").item(0)
 				.getTextContent();
-		
-		
-		//abstractNarration = Jsoup.parse(abstractNarration).text();
+
+		// abstractNarration = Jsoup.parse(abstractNarration).text();
 
 		Long awardID = Long.parseLong(awardElement
 				.getElementsByTagName("AwardID").item(0).getTextContent());
@@ -185,16 +263,15 @@ public class NsfAwardReader {
 
 	}
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, IllegalArgumentException, URISyntaxException, org.json.simple.parser.ParseException {
 
-	//	ReadXmlFiles("E:/Codes/Abstract");
-		
-		String test = "HRD-0000272<br/>Ford<br/><br/>The Louis  Stokes Alliances for Minority Participation (LS-AMP) is a comprehensive ";
-			
-		
-		System.out.println(Jsoup.parse(test).text());
-		
-		System.out.println(test);
+		geoParseTitleAbstract();
+
+//		String test = "HRD-0000272<br/>Ford<br/><br/>The Louis  Stokes Alliances for Minority Participation (LS-AMP) is a comprehensive ";
+//
+//		System.out.println(Jsoup.parse(test).text());
+//
+//		System.out.println(test);
 
 	}
 
