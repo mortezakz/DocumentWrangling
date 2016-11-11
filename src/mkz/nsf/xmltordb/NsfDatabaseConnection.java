@@ -8,20 +8,22 @@ public class NsfDatabaseConnection {
 
     public static Connection c;
 
-    private static String url = "jdbc:postgresql://localhost:5432";
+    private static String url = "jdbc:postgresql://localhost:5433";
     private static String db = "MkzDissertation";
     private static String username = "postgres";
     private static String password = "123456";
     public static final String AWARD_TABLE_NAME = "nsf";
+    public static final String TABLE_NAME = "pubmed";
 
-    static void connect() throws SQLException {
+
+    public static void connect() throws SQLException {
 
         c = DriverManager.getConnection(url + "/" + db, username, password);
         c.setAutoCommit(true);
 
     }
 
-    static void close() throws SQLException {
+    public static void close() throws SQLException {
 
         c.close();
 
